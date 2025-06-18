@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta http-equiv="X-UA-Compatible" content="IE=edge" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Crypto‑Prices Banner v22</title>
+<title>Crypto‑Prices Banner v23</title>
 <style>
  :root{
   --h:50px;                   /* banner height                       */
@@ -14,12 +14,12 @@
   --div:#2c313d;              /* vertical dividers                   */
  }
  html,body{margin:0;background:transparent;font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif;}
- #banner{position:fixed;left:0;right:0;top:0;height:var(--h);background:var(--bg);color:var(--fg);overflow:hidden;white-space:nowrap;z-index:9999;box-shadow:0 3px 8px rgba(0,0,0,.45);}
+ #banner{position:fixed;left:0;right:0;top:0;height:var(--h);background:var(--bg);color:var(--fg);overflow:hidden;white-space:nowrap;z-index:9999;box-shadow:0 3px 8px rgba(0,0,0,.45);font-size:14px;}
  .track{display:flex;align-items:center;height:100%;animation:scroll var(--speed) linear infinite;will-change:transform;}
  #banner:hover .track{animation-play-state:paused;}
  @keyframes scroll{0%{transform:translateX(0)}100%{transform:translateX(-50%)} }
- .item{display:flex;align-items:center;gap:6px;padding:0 14px;border-right:1px solid var(--div);font-size:13px;font-weight:600;min-width:150px;}
- .item img{width:18px;height:18px;border-radius:50%;object-fit:contain;flex:none;background:#fff;}
+ .item{display:flex;align-items:center;gap:6px;padding:0 14px;border-right:1px solid var(--div);min-width:160px;font-weight:600;}
+ .item img{width:18px;height:18px;border-radius:50%;object-fit:contain;flex:none;background:#fff;filter:brightness(0.95);}
  .up{color:#00d97e}.down{color:#ff5c5c}
 </style>
 </head>
@@ -27,12 +27,13 @@
 <div id="banner"><div id="track" class="track"></div></div>
 <script>
 /* =============================================================
-   Crypto‑prices banner v22          (main prices: llama.fi JSON)
-   For any coin where llama.fi lacks an icon we lazily fetch a
-   thumb from CoinGecko via a public CORS proxy.
+   Crypto‑price banner v23
+   ‑ single call to CoinGecko simple/price (via corsproxy) for
+     both price & 24h change.
+   ‑ static icons from cryptocurrency‑icons repo (no CORS).
    =============================================================*/
 
-const IDS=[
+const LIST=[
   ["bitcoin","BTC"], ["ethereum","ETH"], ["solana","SOL"], ["tron","TRX"], ["dogecoin","DOGE"],
   ["hyperliquid","HYPE"], ["sui","SUI"], ["chainlink","LINK"], ["avalanche-2","AVAX"], ["toncoin","TON"],
   ["shiba-inu","SHIB"], ["monero","XMR"], ["polkadot","DOT"], ["uniswap","UNI"], ["pepe","PEPE"],
@@ -42,60 +43,39 @@ const IDS=[
   ["eigenlayer","EIGEN"], ["etherfi","ETHERFI"], ["popcat","POPCAT"], ["layerzero","ZRO"], ["virtuals-protocol","VIRTUAL"]
 ];
 
-const fmt = n => n.toLocaleString("en-US", {
-  minimumFractionDigits: n>1?2:3,
-  maximumFractionDigits: n>1?2:5
-});
-
-const letter = sym => `<span style="display:inline-block;width:18px;height:18px;line-height:18px;font-size:11px;font-weight:700;background:#40454f;border-radius:50%;text-align:center;color:#fff;">${sym[0]}</span>`;
-
-async function fetchIcon(slug, imgEl){
-  try{
-    const prox = `https://corsproxy.io/https://api.coingecko.com/api/v3/coins/${slug}?localization=false&tickers=false&market_data=false&community_data=false&sparkline=false&developer_data=false`;
-    const info = await fetch(prox).then(r=>r.ok?r.json():null);
-    const src = info?.image?.thumb;
-    if(src) imgEl.src = src;
-  }catch{ /* silent */ }
-}
+const fmt=(n,small)=>n.toLocaleString("en-US",{minimumFractionDigits:small?3:2,maximumFractionDigits:small?4:2});
+const letter=sym=>`<span style="display:inline-block;width:18px;height:18px;line-height:18px;font-size:11px;font-weight:700;background:#40454f;border-radius:50%;text-align:center;color:#fff;">${sym[0]}</span>`;
+const iconUrl=sym=>`https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/32/color/${sym.toLowerCase()}.png`;
 
 async function load(){
-  const banner = document.getElementById("banner");
+  const banner=document.getElementById("banner");
+  const track=document.getElementById("track");
   try{
-    const idsParam = IDS.map(([cg])=>`coingecko:${cg}`).join(",");
-    const url = `https://coins.llama.fi/prices/current/${idsParam}`;
-    const {coins} = await fetch(url).then(r=>r.json());
-    const htmlArr = [];
-    IDS.forEach(([cg, sym])=>{
-      const key = `coingecko:${cg}`;
-      const d = coins[key];
-      if(!d) return; // skip missing price
-      const change = d.change_24h??0;
-      const cls = change>=0?"up":"down";
-      const sign = change>=0?"+":"";
-      const icon = d.icon?`<img src="${d.icon}">`:letter(sym);
-      htmlArr.push(`<div class="item" data-slug="${cg}">${icon}<b>${sym}</b> $${fmt(d.price)} <span class="${cls}">${sign}${fmt(change)}%</span></div>`);
+    const idsStr=LIST.map(x=>x[0]).join(",");
+    const cg="https://corsproxy.io/https://api.coingecko.com/api/v3/simple/price?ids="+idsStr+"&vs_currencies=usd&include_24hr_change=true";
+    const data=await fetch(cg).then(r=>r.json());
+    const parts=[];
+    LIST.forEach(([slug,sym])=>{
+      const d=data[slug];
+      if(!d) return;
+      const price=d.usd;
+      if(price==null) return;
+      const pct=d.usd_24h_change??0;
+      const cls=pct>=0?"up":"down";
+      const sign=pct>=0?"+":"";
+      const img=`<img src="${iconUrl(sym)}" onerror="this.replaceWith('${letter(sym)}')">`;
+      parts.push(`<div class="item">${img}<b>${sym}</b> $${fmt(price,price<1)} <span class="${cls}">${sign}${fmt(Math.abs(pct),true)}%</span></div>`);
     });
-
-    if(!htmlArr.length) throw new Error("no data");
-    const track = document.getElementById("track");
-    track.innerHTML = htmlArr.join("") + htmlArr.join(""); // duplicate for seamless scroll
-
-    // lazy‑load icons missing from llama
-    track.querySelectorAll(".item img").forEach(img=>{
-      if(img.src && img.src.startsWith("data:")) return;
-      if(img.src && img.src.length>10) return; // already ok
-      const slug = img.parentElement.getAttribute("data-slug");
-      if(slug) fetchIcon(slug, img);
-    });
-
+    if(!parts.length) throw new Error("empty");
+    track.innerHTML=parts.join("")+parts.join("");
   }catch(e){
     console.error(e);
-    banner.textContent = "⚠️ erro ao carregar preços";
+    banner.textContent="⚠️ erro ao carregar preços";
   }
 }
 
 load();
-setInterval(load, 60_000);
+setInterval(load,60000);
 </script>
 </body>
 </html>
