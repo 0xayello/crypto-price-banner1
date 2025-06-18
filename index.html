@@ -4,21 +4,21 @@
 <meta charset="UTF-8" />
 <meta http-equiv="X-UA-Compatible" content="IE=edge" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Crypto‑Prices Banner v21</title>
+<title>Crypto‑Prices Banner v22</title>
 <style>
  :root{
-  --h:50px;                   /* altura da faixa                      */
-  --speed:150s;               /* ↑ quanto MAIOR mais devagar          */
-  --bg:#0e1117;               /* cor de fundo                         */
-  --fg:#e8eaed;               /* texto                                */
-  --div:#2c313d;              /* divisórias verticais                 */
+  --h:50px;                   /* banner height                       */
+  --speed:150s;               /* bigger = slower scroll              */
+  --bg:#0e1117;               /* background colour                   */
+  --fg:#e8eaed;               /* text colour                         */
+  --div:#2c313d;              /* vertical dividers                   */
  }
  html,body{margin:0;background:transparent;font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif;}
  #banner{position:fixed;left:0;right:0;top:0;height:var(--h);background:var(--bg);color:var(--fg);overflow:hidden;white-space:nowrap;z-index:9999;box-shadow:0 3px 8px rgba(0,0,0,.45);}
  .track{display:flex;align-items:center;height:100%;animation:scroll var(--speed) linear infinite;will-change:transform;}
  #banner:hover .track{animation-play-state:paused;}
  @keyframes scroll{0%{transform:translateX(0)}100%{transform:translateX(-50%)} }
- .item{display:flex;align-items:center;gap:6px;padding:0 14px;border-right:1px solid var(--div);font-size:13px;font-weight:600;min-width:140px;}
+ .item{display:flex;align-items:center;gap:6px;padding:0 14px;border-right:1px solid var(--div);font-size:13px;font-weight:600;min-width:150px;}
  .item img{width:18px;height:18px;border-radius:50%;object-fit:contain;flex:none;background:#fff;}
  .up{color:#00d97e}.down{color:#ff5c5c}
 </style>
@@ -27,49 +27,75 @@
 <div id="banner"><div id="track" class="track"></div></div>
 <script>
 /* =============================================================
-   Crypto‑prices banner v21  (use llama.fi prices – CORS‑friendly)
+   Crypto‑prices banner v22          (main prices: llama.fi JSON)
+   For any coin where llama.fi lacks an icon we lazily fetch a
+   thumb from CoinGecko via a public CORS proxy.
    =============================================================*/
 
 const IDS=[
-  ["bitcoin","BTC"],["ethereum","ETH"],["solana","SOL"],["tron","TRX"],["dogecoin","DOGE"],
-  ["hyperliquid","HYPE"],["sui","SUI"],["chainlink","LINK"],["avalanche-2","AVAX"],["toncoin","TON"],
-  ["shiba-inu","SHIB"],["monero","XMR"],["polkadot","DOT"],["uniswap","UNI"],["pepe","PEPE"],
-  ["aave","AAVE"],["near","NEAR"],["ondo-finance","ONDO"],["render-token","RNDR"],["cosmos","ATOM"],
-  ["arbitrum","ARB"],["jupiter","JUP"],["celestia","TIA"],["fartcoin","FART"],["sei-network","SEI"],
-  ["stacks","STX"],["dogwifhat","WIF"],["jito-governance-token","JTO"],["lido-dao","LDO"],["pendle","PENDLE"],
-  ["eigenlayer","EIGEN"],["etherfi","ETHERFI"],["popcat","POPCAT"],["layerzero","ZRO"],["virtuals-protocol","VIRTUAL"]
+  ["bitcoin","BTC"], ["ethereum","ETH"], ["solana","SOL"], ["tron","TRX"], ["dogecoin","DOGE"],
+  ["hyperliquid","HYPE"], ["sui","SUI"], ["chainlink","LINK"], ["avalanche-2","AVAX"], ["toncoin","TON"],
+  ["shiba-inu","SHIB"], ["monero","XMR"], ["polkadot","DOT"], ["uniswap","UNI"], ["pepe","PEPE"],
+  ["aave","AAVE"], ["near","NEAR"], ["ondo-finance","ONDO"], ["render-token","RNDR"], ["cosmos","ATOM"],
+  ["arbitrum","ARB"], ["jupiter","JUP"], ["celestia","TIA"], ["fartcoin","FART"], ["sei-network","SEI"],
+  ["stacks","STX"], ["dogwifhat","WIF"], ["jito-governance-token","JTO"], ["lido-dao","LDO"], ["pendle","PENDLE"],
+  ["eigenlayer","EIGEN"], ["etherfi","ETHERFI"], ["popcat","POPCAT"], ["layerzero","ZRO"], ["virtuals-protocol","VIRTUAL"]
 ];
 
-const fmt=n=>n.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
-const letter=s=>`<span style="display:inline-block;width:18px;height:18px;line-height:18px;font-size:11px;font-weight:700;background:#40454f;border-radius:50%;text-align:center;color:#fff;">${s[0]}</span>`;
+const fmt = n => n.toLocaleString("en-US", {
+  minimumFractionDigits: n>1?2:3,
+  maximumFractionDigits: n>1?2:5
+});
+
+const letter = sym => `<span style="display:inline-block;width:18px;height:18px;line-height:18px;font-size:11px;font-weight:700;background:#40454f;border-radius:50%;text-align:center;color:#fff;">${sym[0]}</span>`;
+
+async function fetchIcon(slug, imgEl){
+  try{
+    const prox = `https://corsproxy.io/https://api.coingecko.com/api/v3/coins/${slug}?localization=false&tickers=false&market_data=false&community_data=false&sparkline=false&developer_data=false`;
+    const info = await fetch(prox).then(r=>r.ok?r.json():null);
+    const src = info?.image?.thumb;
+    if(src) imgEl.src = src;
+  }catch{ /* silent */ }
+}
 
 async function load(){
-  const banner=document.getElementById("banner");
+  const banner = document.getElementById("banner");
   try{
-    const idsParam=IDS.map(([cg])=>`coingecko:${cg}`).join(",");
-    const url=`https://coins.llama.fi/prices/current/${idsParam}`;
-    const {coins}=await fetch(url).then(r=>r.json());
+    const idsParam = IDS.map(([cg])=>`coingecko:${cg}`).join(",");
+    const url = `https://coins.llama.fi/prices/current/${idsParam}`;
+    const {coins} = await fetch(url).then(r=>r.json());
+    const htmlArr = [];
+    IDS.forEach(([cg, sym])=>{
+      const key = `coingecko:${cg}`;
+      const d = coins[key];
+      if(!d) return; // skip missing price
+      const change = d.change_24h??0;
+      const cls = change>=0?"up":"down";
+      const sign = change>=0?"+":"";
+      const icon = d.icon?`<img src="${d.icon}">`:letter(sym);
+      htmlArr.push(`<div class="item" data-slug="${cg}">${icon}<b>${sym}</b> $${fmt(d.price)} <span class="${cls}">${sign}${fmt(change)}%</span></div>`);
+    });
 
-    const html=IDS.map(([cg,sym])=>{
-      const key=`coingecko:${cg}`;
-      const d=coins[key];
-      if(!d) return "";
-      const ch=d.change_24h??0; const cls=ch>=0?"up":"down"; const sign=ch>=0?"+":"";
-      const img=d.icon?`<img src="${d.icon}" onerror="this.outerHTML='${letter(sym)}'">`:letter(sym);
-      return `<div class="item">${img}<b>${sym}</b> $${fmt(d.price)} <span class="${cls}">${sign}${fmt(ch)}%</span></div>`;
-    }).filter(Boolean);
+    if(!htmlArr.length) throw new Error("no data");
+    const track = document.getElementById("track");
+    track.innerHTML = htmlArr.join("") + htmlArr.join(""); // duplicate for seamless scroll
 
-    if(!html.length) throw new Error("sem dados");
-    const track=document.getElementById("track");
-    track.innerHTML=html.join("")+html.join("");
+    // lazy‑load icons missing from llama
+    track.querySelectorAll(".item img").forEach(img=>{
+      if(img.src && img.src.startsWith("data:")) return;
+      if(img.src && img.src.length>10) return; // already ok
+      const slug = img.parentElement.getAttribute("data-slug");
+      if(slug) fetchIcon(slug, img);
+    });
+
   }catch(e){
     console.error(e);
-    banner.textContent="⚠️ erro ao carregar preços";
+    banner.textContent = "⚠️ erro ao carregar preços";
   }
 }
 
 load();
-setInterval(load,60_000);
+setInterval(load, 60_000);
 </script>
 </body>
 </html>
