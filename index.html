@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Crypto‑Prices Banner</title>
+<title>Crypto‑Prices Banner v18</title>
 <style>
  :root{
   --banner-h:50px;              /* altura em px                                   */
@@ -15,7 +15,7 @@
  html,body{margin:0;padding:0;background:transparent;font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",Helvetica,Arial,sans-serif;}
  #cryptoBanner{position:absolute;inset:0 auto auto 0;height:var(--banner-h);background:var(--bg);color:var(--text);overflow:hidden;white-space:nowrap;box-shadow:0 3px 8px rgba(0,0,0,.45);}
  .track{display:flex;height:100%;align-items:center;animation:scroll var(--scroll-duration) linear infinite;will-change:transform;}
- @keyframes scroll{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+ @keyframes scroll{0%{transform:translateX(0)}100%{transform:translateX(-50%)} }
  #cryptoBanner:hover .track{animation-play-state:paused;}
  .item{display:flex;align-items:center;gap:6px;padding:0 12px;border-right:1px solid var(--divider);font-size:13px;font-weight:600;}
  .item img{height:18px;width:18px;object-fit:contain;border-radius:50%;background:#fff;}
@@ -27,17 +27,18 @@
 <body>
 <div id="cryptoBanner"><div id="track" class="track"></div></div>
 <script>
-/* ================================================================
-   Crypto‑price banner v20 (logos com fallback inteligente)
-   – primeiro tenta repositório open‑source (spothq)
-   – se não existir, tenta CDN da CoinGecko (mapa abaixo)
-   – caso falhe, exibe círculo cinza com a primeira letra
-   ================================================================*/
+/* =============================================================
+   Crypto‑price banner v18  (100% logos via CoinGecko)
+   - usa /simple/price para cotações
+   - na mesma chamada paralela, puxa /coins/[id] (sem market_data)
+     para garantir que SEMPRE tenha image.small
+   =============================================================*/
 
-// 1) 📛 SUA CHAVE DA COINGECKO (free) – pegue em https://www.coingecko.com/pt/api
-const API_KEY = "CG-demo-key";      // troque depois para maior limite
+const API_KEY     = "CG-demo-key";   // troque para sua chave: https://www.coingecko.com/pt/api
+const CHUNK       = 20;              // ids por requisição (cotações)
+const REFRESH_MS  = 60_000;          // auto‑refresh a cada minuto
 
-// 2) Lista de moedas/tickers que DEVEM aparecer (ordem será mantida)
+// Lista desejada — mantenha ordem
 const COINS=[
   {id:"bitcoin",symbol:"BTC"},{id:"ethereum",symbol:"ETH"},{id:"solana",symbol:"SOL"},{id:"tron",symbol:"TRX"},{id:"dogecoin",symbol:"DOGE"},
   {id:"hyperliquid",symbol:"HYPE"},{id:"sui",symbol:"SUI"},{id:"chainlink",symbol:"LINK"},{id:"avalanche-2",symbol:"AVAX"},{id:"toncoin",symbol:"TON"},
@@ -48,84 +49,61 @@ const COINS=[
   {id:"eigenlayer",symbol:"EIGEN"},{id:"etherfi",symbol:"ETHERFI"},{id:"popcat",symbol:"POPCAT"},{id:"layerzero",symbol:"ZRO"},{id:"virtuals-protocol",symbol:"VIRTUAL"}
 ];
 
-// 3) Ícones que NÃO existem no repo spothq – mapeamos para o CDN da CoinGecko
-//    Para descobrir: abra https://api.coingecko.com/api/v3/coins/<id> e pegue image.small
-const CG_ICON = {
-  hype:"https://assets.coingecko.com/coins/images/39529/small/hype.png",
-  ondo:"https://assets.coingecko.com/coins/images/31635/small/ondo.png",
-  fart:"https://assets.coingecko.com/coins/images/33946/small/fart.png",
-  eigen:"https://assets.coingecko.com/coins/images/37064/small/eigen.png",
-  etherfi:"https://assets.coingecko.com/coins/images/34860/small/etherfi.png",
-  zro:"https://assets.coingecko.com/coins/images/37048/small/layerzero.png",
-  virtual:"https://assets.coingecko.com/coins/images/36770/small/virtuals.png"
-};
+const fmt=n=>typeof n==="number"?n.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2}):"–";
 
-// ======== Configs ========
-const CHUNK = 20;            // máx ids por request (p/ não bater 429)
-const REFRESH_MS = 60_000;   // 1 minuto
-const fmt = n => typeof n==="number" ? n.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2}) : "–";
+async function priceChunk(ids){
+  const url=`https://api.coingecko.com/api/v3/simple/price?vs_currencies=usd&ids=${ids}&include_24hr_change=true&x_cg_pro_api_key=${API_KEY}`;
+  const r = await fetch(url);
+  if(!r.ok) throw new Error(r.status);
+  return r.json();
+}
 
-// ========= Helpers =========
-function icon(sym){ // devolve primary#fallback
-  const s = sym.toLowerCase();
-  const primary = `https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/32/color/${s}.png`;
-  const fallback = CG_ICON[s] || "";
-  return `${primary}#${fallback}`;
+async function iconOf(id){
+  try{
+    const r = await fetch(`https://api.coingecko.com/api/v3/coins/${id}?localization=false&tickers=false&market_data=false&community_data=false&developer_data=false&sparkline=false&x_cg_pro_api_key=${API_KEY}`);
+    if(!r.ok) throw new Error();
+    const j = await r.json();
+    return j.image?.small || "";
+  }catch{ return ""; }
 }
 
 function letter(sym){
-  const span=document.createElement("span");
-  span.textContent=sym[0];
-  span.style.cssText="display:inline-block;width:18px;height:18px;line-height:18px;font-size:11px;font-weight:700;background:#40454f;border-radius:50%;text-align:center;color:#fff;";
-  return span.outerHTML;
-}
-
-async function fetchChunk(ids){
-  const url = `https://api.coingecko.com/api/v3/simple/price?vs_currencies=usd&ids=${ids}&include_24hr_change=true&x_cg_pro_api_key=${API_KEY}`;
-  const r   = await fetch(url);
-  if(!r.ok) throw new Error(r.status);
-  const j   = await r.json();
-  if(j.error) throw new Error(j.error);
-  return j;
-}
-
-function buildHTML(data){
-  return COINS.map(c=>{
-    const p = data[c.id];
-    if(!p||typeof p.usd!=="number") return "";
-    const ch  = p.usd_24h_change;
-    const cls = typeof ch==="number" && ch>=0 ? "up":"down";
-    const sign= typeof ch==="number" && ch>=0 ? "+":"";
-    const chStr = typeof ch==="number" ? `${sign}${fmt(ch)}%` : "–";
-
-    const [u1,u2] = icon(c.symbol).split("#");
-    const imgTag  = `<img src="${u1}" onerror="if('${u2}')this.src='${u2}';else{this.outerHTML=\`${letter(c.symbol)}\`;}">`;
-
-    return `<div class="item">${imgTag} <b>${c.symbol}</b> $${fmt(p.usd)} <span class="${cls}">${chStr}</span></div>`;
-  }).filter(Boolean).join("");
+  return `<span style="display:inline-block;width:18px;height:18px;line-height:18px;font-size:11px;font-weight:700;background:#40454f;border-radius:50%;text-align:center;color:#fff;">${sym[0]}</span>`;
 }
 
 async function load(){
   try{
-    let result={};
+    const priceData={};
+    const iconMap ={};
     for(let i=0;i<COINS.length;i+=CHUNK){
-      if(i) await new Promise(r=>setTimeout(r,1300)); // espaçamento ~1.3 s p/ não saturar
-      const slice = COINS.slice(i,i+CHUNK);
-      const json  = await fetchChunk(slice.map(c=>c.id).join(","));
-      Object.assign(result,json);
+      if(i) await new Promise(r=>setTimeout(r,1200));
+      const slice=COINS.slice(i,i+CHUNK);
+      const [prices] = await Promise.all([
+        priceChunk(slice.map(c=>c.id).join(",")),
+        ...slice.map(async c=>{iconMap[c.id]=await iconOf(c.id);})
+      ]);
+      Object.assign(priceData,prices);
     }
-    const html=buildHTML(result);
-    if(!html) throw new Error("Sem dados úteis");
+
+    const html = COINS.map(c=>{
+      const p=priceData[c.id];
+      if(!p) return "";
+      const ch=p.usd_24h_change; const cls=ch>=0?"up":"down"; const sign=ch>=0?"+":"";
+      const img=iconMap[c.id]?`<img src="${iconMap[c.id]}" onerror="this.outerHTML='${letter(c.symbol)}'">`:letter(c.symbol);
+      return `<div class="item">${img} <b>${c.symbol}</b> $${fmt(p.usd)} <span class="${cls}">${sign}${fmt(ch)}%</span></div>`;
+    }).filter(Boolean).join("");
+
+    if(!html) throw new Error("sem dados");
     const track=document.getElementById("track");
-    track.innerHTML = html + html; // duplica p/ scroll infinito
+    track.innerHTML=html+html;
   }catch(e){
     console.error(e);
-    document.getElementById("cryptoBanner").textContent = "⚠️ erro ao carregar preços";
+    document.getElementById("cryptoBanner").textContent="⚠️ erro ao carregar preços";
   }
 }
 
 load();
-setInterval(load, REFRESH_MS);
+setInterval(load,REFRESH_MS);
 </script>
 </body>
 </html>
