@@ -2,107 +2,80 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Crypto‑Prices Banner v19</title>
+<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Crypto‑Prices Banner v20</title>
 <style>
  :root{
-  --banner-h:50px;              /* altura em px                                   */
-  --scroll-duration:120s;       /* quanto MAIOR, mais devagar o scroll            */
-  --bg:#0e1117;                 /* cor de fundo                                   */
-  --text:#e6e8ea;               /* cor do texto                                   */
-  --divider:#2c313d;            /* cor dos divisores verticais                    */
+  --h:50px;                   /* altura da faixa                      */
+  --speed:150s;               /* ↑ quanto MAIOR mais devagar          */
+  --bg:#0e1117;               /* cor de fundo                         */
+  --fg:#e8eaed;               /* texto                                */
+  --div:#2c313d;              /* divisórias verticais                 */
  }
- html,body{margin:0;padding:0;background:transparent;font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",Helvetica,Arial,sans-serif;}
- #cryptoBanner{position:absolute;left:0;right:0;top:0;height:var(--banner-h);background:var(--bg);color:var(--text);overflow:hidden;white-space:nowrap;box-shadow:0 3px 8px rgba(0,0,0,.45);z-index:9999;}
- .track{display:flex;height:100%;align-items:center;animation:scroll var(--scroll-duration) linear infinite;will-change:transform;}
- @keyframes scroll{0%{transform:translateX(0)}100%{transform:translateX(-50%)} }
- #cryptoBanner:hover .track{animation-play-state:paused;}
- .item{display:flex;align-items:center;gap:6px;padding:0 12px;border-right:1px solid var(--divider);font-size:13px;font-weight:600;min-width:130px;}
- .item img{height:18px;width:18px;object-fit:contain;border-radius:50%;background:#fff;flex:none;}
- .price{font-variant-numeric:tabular-nums;}
- .up{color:#00d97e;}
- .down{color:#ff5c5c;}
+ html,body{margin:0;background:transparent;font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif;}
+ #banner{position:fixed;left:0;right:0;top:0;height:var(--h);background:var(--bg);color:var(--fg);overflow:hidden;white-space:nowrap;z-index:9999;box-shadow:0 3px 8px rgba(0,0,0,.45);}
+ .track{display:flex;align-items:center;height:100%;animation:scroll var(--speed) linear infinite;will-change:transform;}
+ #banner:hover .track{animation-play-state:paused;}
+ @keyframes scroll{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+ .item{display:flex;align-items:center;gap:6px;padding:0 14px;border-right:1px solid var(--div);font-size:13px;font-weight:600;min-width:140px;}
+ .item img{width:18px;height:18px;border-radius:50%;object-fit:contain;flex:none;background:#fff;}
+ .up{color:#00d97e}.down{color:#ff5c5c}
 </style>
 </head>
 <body>
-<div id="cryptoBanner"><div id="track" class="track"></div></div>
+<div id="banner"><div id="track" class="track"></div></div>
 <script>
 /* =============================================================
-   Crypto‑price banner v19 – corrige CORS  +  logos CoinGecko
+   Crypto‑prices banner v20  (single request + icones CoinGecko)
    =============================================================*/
 
-const CHUNK       = 20;              // ids por solicitação (evita 429)
-const REFRESH_MS  = 60_000;          // auto‑refresh a cada minuto
-
-// --- lista desejada ------------------------------------------
-const COINS=[
-  ["bitcoin","BTC"],["ethereum","ETH"],["solana","SOL"],["tron","TRX"],["dogecoin","DOGE"],
-  ["hyperliquid","HYPE"],["sui","SUI"],["chainlink","LINK"],["avalanche-2","AVAX"],["toncoin","TON"],
-  ["shiba-inu","SHIB"],["monero","XMR"],["polkadot","DOT"],["uniswap","UNI"],["pepe","PEPE"],
-  ["aave","AAVE"],["near","NEAR"],["ondo-finance","ONDO"],["render-token","RNDR"],["cosmos","ATOM"],
-  ["arbitrum","ARB"],["jupiter","JUP"],["celestia","TIA"],["fartcoin","FART"],["sei-network","SEI"],
-  ["stacks","STX"],["dogwifhat","WIF"],["jito-governance-token","JTO"],["lido-dao","LDO"],["pendle","PENDLE"],
+const IDS=[
+  ["bitcoin","BTC"], ["ethereum","ETH"],  ["solana","SOL"],   ["tron","TRX"],        ["dogecoin","DOGE"],
+  ["hyperliquid","HYPE"],["sui","SUI"],      ["chainlink","LINK"],["avalanche-2","AVAX"], ["toncoin","TON"],
+  ["shiba-inu","SHIB"], ["monero","XMR"],   ["polkadot","DOT"],  ["uniswap","UNI"],      ["pepe","PEPE"],
+  ["aave","AAVE"],      ["near","NEAR"],    ["ondo-finance","ONDO"],["render-token","RNDR"],["cosmos","ATOM"],
+  ["arbitrum","ARB"],   ["jupiter","JUP"],  ["celestia","TIA"],  ["fartcoin","FART"],    ["sei-network","SEI"],
+  ["stacks","STX"],     ["dogwifhat","WIF"],["jito-governance-token","JTO"], ["lido-dao","LDO"], ["pendle","PENDLE"],
   ["eigenlayer","EIGEN"],["etherfi","ETHERFI"],["popcat","POPCAT"],["layerzero","ZRO"],["virtuals-protocol","VIRTUAL"]
 ];
 
-// -------- utilidades -----------------------------------------
+// -------------- helpers ---------------------------------------
+const fmt   = n=>n.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
+const letter=s=>`<span style="display:inline-block;width:18px;height:18px;line-height:18px;font-size:11px;font-weight:700;background:#40454f;border-radius:50%;text-align:center;color:#fff;">${s[0]}</span>`;
 const sleep = ms=>new Promise(r=>setTimeout(r,ms));
-const fmt   = n=>typeof n==="number"?n.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2}):"–";
 
-function letter(sym){
-  return `<span style="display:inline-block;width:18px;height:18px;line-height:18px;font-size:11px;font-weight:700;background:#40454f;border-radius:50%;text-align:center;color:#fff;">${sym[0]}</span>`;
-}
-
-async function safeFetch(url){
+async function fetchJSON(url){
   try{
-    const r= await fetch(url);
+    const r=await fetch(url);
     if(!r.ok) throw new Error(r.status);
-    return r;
-  }catch(e){
-    // fallback CORS proxy
-    return fetch(`https://corsproxy.io/?${encodeURIComponent(url)}`);
+    return r.json();
+  }catch{
+    // fallback CORS proxy (evita bloqueio localisation)
+    const r=await fetch(`https://corsproxy.io/?${encodeURIComponent(url)}`);
+    return r.json();
   }
 }
 
-async function fetchPrices(ids){
-  const url=`https://api.coingecko.com/api/v3/simple/price?vs_currencies=usd&ids=${ids}&include_24hr_change=true`;
-  const r=await safeFetch(url);
-  return r.json();
-}
-
-async function fetchIcon(id){
-  try{
-    const r=await safeFetch(`https://api.coingecko.com/api/v3/coins/${id}?localization=false&tickers=false&market_data=false&community_data=false&developer_data=false&sparkline=false`);
-    const j=await r.json();
-    return j.image?.small||"";
-  }catch{return "";}
-}
-
 async function load(){
-  const banner=document.getElementById("cryptoBanner");
+  const banner=document.getElementById("banner");
   try{
-    const priceData={}, icons={};
-    for(let i=0;i<COINS.length;i+=CHUNK){
-      if(i) await sleep(1200);
-      const slice=COINS.slice(i,i+CHUNK);
-      const [p] = await Promise.all([
-        fetchPrices(slice.map(c=>c[0]).join(",")),
-        ...slice.map(async c=>{icons[c[0]]=await fetchIcon(c[0]);})
-      ]);
-      Object.assign(priceData,p);
-    }
+    const idsParam=IDS.map(c=>c[0]).join(",");
+    const url=`https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${idsParam}&price_change_percentage=24h`;
+    const data=await fetchJSON(url);         // um único pedido com preços + imagem
+    const mp=Object.fromEntries(data.map(o=>[o.id,o]));
 
-    const html=COINS.map(([id,sym])=>{
-      const p=priceData[id];
-      if(!p) return "";
-      const ch=p.usd_24h_change;const cls=ch>=0?"up":"down";const sign=ch>=0?"+":"";
-      const img=icons[id]?`<img src="${icons[id]}" onerror="this.outerHTML='${letter(sym)}'">`:letter(sym);
-      return `<div class="item">${img} <b>${sym}</b> $${fmt(p.usd)} <span class="${cls}">${sign}${fmt(ch)}%</span></div>`;
-    }).filter(Boolean).join("");
+    const html=IDS.map(([id,sym])=>{
+      const d=mp[id];
+      if(!d) return "";
+      const ch=d.price_change_percentage_24h; const cls=ch>=0?"up":"down"; const sign=ch>=0?"+":"";
+      const img=d.image?`<img src="${d.image}" onerror="this.outerHTML='${letter(sym)}'">`:letter(sym);
+      return `<div class="item">${img}<b>${sym}</b> $${fmt(d.current_price)} <span class="${cls}">${sign}${fmt(ch)}%</span></div>`;
+    }).filter(Boolean);
 
-    if(!html) throw new Error("sem dados");
+    if(!html.length) throw new Error("sem dados");
     const track=document.getElementById("track");
-    track.innerHTML=html+html; // duplica para efeito infinito
+    track.innerHTML=html.join("")+html.join("");  // duplica para rolar infinito
   }catch(e){
     console.error(e);
     banner.textContent="⚠️ erro ao carregar preços";
@@ -110,7 +83,7 @@ async function load(){
 }
 
 load();
-setInterval(load,REFRESH_MS);
+setInterval(load,60_000);
 </script>
 </body>
 </html>
