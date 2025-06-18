@@ -6,8 +6,8 @@
 <title>Crypto Prices Banner</title>
 <style>
  :root{
-  --banner-h:50px;
-  --scroll-duration:120s;
+  --banner-h:50px;            /* altura */
+  --scroll-duration:120s;     /* velocidade */
   --bg:#0e1117;--text:#e6e8ea;--divider:#2c313d;
  }
  html,body{margin:0;padding:0;background:transparent;font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",Helvetica,Arial,sans-serif;}
@@ -25,10 +25,9 @@
 <div id="cryptoBanner"><div class="track" id="track"></div></div>
 <script>
 /* -------------------------------------------------------
-   Crypto banner v16 – robust loader
-   – splits the request in small chunks (<=20 ids)
-   – graceful‑degrades: tokens que não existirem ainda
-     simplesmente não aparecem, mas os demais carregam.
+   Crypto banner v17 → v18
+   - skip tokens que voltam sem preço numérico (evita erro toLocaleString)
+   - usa "–" quando variação ausente
 ---------------------------------------------------------*/
 const COINS=[
   {id:"bitcoin",symbol:"BTC"},
@@ -70,7 +69,7 @@ const COINS=[
 
 const CHUNK=20;             // máx ids por chamada
 const REFRESH_MS=60000;     // 1 minuto
-const fmt=n=>n.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
+const fmt=n=>typeof n==="number"?n.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2}):"–";
 const icon=s=>`https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/32/color/${s.toLowerCase()}.png`;
 
 async function fetchChunk(ids){
@@ -78,11 +77,7 @@ async function fetchChunk(ids){
   const r=await fetch(url);
   if(!r.ok) throw new Error(r.status);
   const j=await r.json();
-  // se vier "error": "id not found: ..." devolve objeto vazio
-  if(j.error){
-    console.warn(j.error);
-    return {};
-  }
+  if(j.error){console.warn(j.error);return {}};
   return j;
 }
 
@@ -90,7 +85,6 @@ async function load(){
   try{
     let results={};
     for(let i=0;i<COINS.length;i+=CHUNK){
-      // pequeno atraso entre chamadas para evitar 429
       if(i) await new Promise(r=>setTimeout(r,1200));
       const slice=COINS.slice(i,i+CHUNK);
       const json=await fetchChunk(slice.map(c=>c.id).join(","));
@@ -99,16 +93,17 @@ async function load(){
 
     const html=COINS.map(c=>{
       const p=results[c.id];
-      if(!p) return ""; // ignora token ausente
-      const cls=p.usd_24h_change>=0?"up":"down";
-      const sign=p.usd_24h_change>=0?"+":"";
-      return `<div class="item"><img src="${icon(c.symbol)}" onerror="this.remove()"/> <b>${c.symbol}</b> $${fmt(p.usd)} <span class="${cls}">${sign}${fmt(p.usd_24h_change)}%</span></div>`;
+      if(!p||typeof p.usd!=="number") return ""; // ignora sem preço
+      const change=p.usd_24h_change;
+      const cls=(typeof change==="number"&&change>=0)?"up":"down";
+      const sign=(typeof change==="number"&&change>=0?"+":"");
+      const changeStr=(typeof change==="number"?`${sign}${fmt(change)}%`:"–");
+      return `<div class="item"><img src="${icon(c.symbol)}" onerror="this.remove()"/> <b>${c.symbol}</b> $${fmt(p.usd)} <span class="${cls}">${changeStr}</span></div>`;
     }).filter(Boolean).join("");
 
     if(!html) throw new Error("Sem dados úteis");
-
     const track=document.getElementById("track");
-    track.innerHTML=html+html; // duplica para rolagem infinita
+    track.innerHTML=html+html;
   }catch(err){
     console.error(err);
     document.getElementById("cryptoBanner").textContent="⚠️ erro ao carregar preços";
