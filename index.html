@@ -47,7 +47,7 @@ const letter=(sym)=>`<span class="fallback">${sym[0]}</span>`;
 
 async function fetchData(){
   const ids=TOKENS.map(t=>t[0]).join(",");
-  const url=`https://corsproxy.io/https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd&include_24hr_change=true`;
+  const url=`https://corsproxy.io/?https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd&include_24hr_change=true`;
   const res=await fetch(url);
   if(!res.ok) throw new Error(res.status);
   return res.json();
