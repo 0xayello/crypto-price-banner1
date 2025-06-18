@@ -24,7 +24,12 @@
 <body>
 <div id="cryptoBanner"><div class="track" id="track"></div></div>
 <script>
-// ======= CONFIG =======
+/* -------------------------------------------------------
+   Crypto banner v16 – robust loader
+   – splits the request in small chunks (<=20 ids)
+   – graceful‑degrades: tokens que não existirem ainda
+     simplesmente não aparecem, mas os demais carregam.
+---------------------------------------------------------*/
 const COINS=[
   {id:"bitcoin",symbol:"BTC"},
   {id:"ethereum",symbol:"ETH"},
@@ -63,38 +68,49 @@ const COINS=[
   {id:"virtuals-protocol",symbol:"VIRTUAL"}
 ];
 
-// ======= STYLE HELPERS =======
+const CHUNK=20;             // máx ids por chamada
+const REFRESH_MS=60000;     // 1 minuto
 const fmt=n=>n.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
-const icon=(sym)=>`https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/32/color/${sym.toLowerCase()}.png`;
+const icon=s=>`https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/32/color/${s.toLowerCase()}.png`;
 
-// ======= CORE =======
+async function fetchChunk(ids){
+  const url=`https://api.coingecko.com/api/v3/simple/price?vs_currencies=usd&ids=${ids}&include_24hr_change=true`;
+  const r=await fetch(url);
+  if(!r.ok) throw new Error(r.status);
+  return r.json();
+}
+
 async function load(){
   try{
-    const ids=COINS.map(c=>c.id).join(',');
-    const url=`https://api.coingecko.com/api/v3/simple/price?vs_currencies=usd&ids=${ids}&include_24hr_change=true`;
-    const res=await fetch(url);
-    if(!res.ok) throw new Error(res.status);
-    const data=await res.json();
+    let results={};
+    for(let i=0;i<COINS.length;i+=CHUNK){
+      // pequeno atraso entre chamadas para evitar 429
+      if(i) await new Promise(r=>setTimeout(r,1200));
+      const slice=COINS.slice(i,i+CHUNK);
+      const json=await fetchChunk(slice.map(c=>c.id).join(","));
+      Object.assign(results,json);
+    }
 
-    const items=COINS.map(c=>{
-      const p=data[c.id];
-      if(!p) return '';//skip missing
-      const cls=p.usd_24h_change>=0?'up':'down';
-      const sign=p.usd_24h_change>=0?'+':'';
-      return `<div class="item"><img src="${icon(c.symbol)}" onerror="this.style.display='none'"/> <b>${c.symbol}</b> $${fmt(p.usd)} <span class="${cls}">${sign}${fmt(p.usd_24h_change)}%</span></div>`;
-    }).filter(Boolean).join('');
+    const html=COINS.map(c=>{
+      const p=results[c.id];
+      if(!p) return ""; // ignora token ausente
+      const cls=p.usd_24h_change>=0?"up":"down";
+      const sign=p.usd_24h_change>=0?"+":"";
+      return `<div class="item"><img src="${icon(c.symbol)}" onerror="this.remove()"/> <b>${c.symbol}</b> $${fmt(p.usd)} <span class="${cls}">${sign}${fmt(p.usd_24h_change)}%</span></div>`;
+    }).filter(Boolean).join("");
 
-    if(!items) throw new Error('empty');
-    const track=document.getElementById('track');
-    track.innerHTML=items+items;//duplicate for loop scroll
-  }catch(e){
-    console.error(e);
-    document.getElementById('cryptoBanner').textContent='⚠️ erro ao carregar preços';
+    if(!html) throw new Error("Sem dados úteis");
+
+    const track=document.getElementById("track");
+    track.innerHTML=html+html; // duplica para rolagem infinita
+  }catch(err){
+    console.error(err);
+    document.getElementById("cryptoBanner").textContent="⚠️ erro ao carregar preços";
   }
 }
 
 load();
-setInterval(load,60000);
+setInterval(load,REFRESH_MS);
 </script>
 </body>
 </html>
