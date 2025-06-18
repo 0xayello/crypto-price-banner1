@@ -38,7 +38,11 @@ const COINS=[
   {id:"tron",        symbol:"TRX"}
 ];
 // gerar URL de ícone — retirado de spothq/cryptocurrency-icons (MIT)
-const iconUrl=sym=>`https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/32/color/${sym.toLowerCase()}.png`;
+// primário: API cryptoicon vercel; fallback: pack cryptocurrency-icons
+const iconUrl=sym=>({
+  primary:`https://cryptoicon-api.vercel.app/api/icon/${sym.toLowerCase()}`,
+  fallback:`https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/32/color/${sym.toLowerCase()}.png`
+});
 
 const API=`https://api.coingecko.com/api/v3/simple/price?vs_currencies=usd&ids=${COINS.map(c=>c.id).join(',')}&include_24hr_change=true`;
 
@@ -47,7 +51,8 @@ const fmt=n=>n.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDi
 function makeItem(c,price,change){
   const cls=change>=0?'up':'down';
   const sign=change>=0?'+':'';
-  const img=`<img src="${iconUrl(c.symbol)}" alt="${c.symbol}" onerror="this.style.display='none'">`;
+    const urls=iconUrl(c.symbol);
+  const img=`<img src="${urls.primary}" alt="${c.symbol}" onerror="if(this.src!== '${urls.fallback}') { this.src='${urls.fallback}'; } else { this.style.display='none'; }">`;
   return `<div class="item">${img}<span>${c.symbol}</span><span class="price">$${fmt(price)}</span><span class="${cls}">${sign}${fmt(change)}%</span></div>`;
 }
 // ----------- CORE ---------------
