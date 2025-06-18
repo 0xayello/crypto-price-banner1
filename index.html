@@ -26,19 +26,47 @@
 <script>
 // ----------- CONFIG -------------
 const COINS=[
-  {id:"bitcoin",     symbol:"BTC"},
-  {id:"ethereum",    symbol:"ETH"},
-  {id:"solana",      symbol:"SOL"},
-  {id:"binancecoin", symbol:"BNB"},
-  {id:"dogecoin",    symbol:"DOGE"},
-  {id:"cardano",     symbol:"ADA"},
-  {id:"toncoin",     symbol:"TON"},
-  {id:"polkadot",    symbol:"DOT"},
-  {id:"chainlink",   symbol:"LINK"},
-  {id:"tron",        symbol:"TRX"}
+  {id:"bitcoin",symbol:"BTC"},
+  {id:"ethereum",symbol:"ETH"},
+  {id:"binancecoin",symbol:"BNB"},
+  {id:"solana",symbol:"SOL"},
+  {id:"tron",symbol:"TRX"},
+  {id:"dogecoin",symbol:"DOGE"},
+  {id:"hyperliquid",symbol:"HYPER"},
+  {id:"sui",symbol:"SUI"},
+  {id:"chainlink",symbol:"LINK"},
+  {id:"avalanche-2",symbol:"AVAX"},
+  {id:"toncoin",symbol:"TON"},
+  {id:"shiba-inu",symbol:"SHIB"},
+  {id:"monero",symbol:"XMR"},
+  {id:"polkadot",symbol:"DOT"},
+  {id:"uniswap",symbol:"UNI"},
+  {id:"pepe",symbol:"PEPE"},
+  {id:"aave",symbol:"AAVE"},
+  {id:"near",symbol:"NEAR"},
+  {id:"ondo-finance",symbol:"ONDO"},
+  {id:"render-token",symbol:"RNDR"},
+  {id:"cosmos",symbol:"ATOM"},
+  {id:"arbitrum",symbol:"ARB"},
+  {id:"jupiter-exchange",symbol:"JUP"},
+  {id:"celestia",symbol:"TIA"},
+  {id:"fartcoin",symbol:"FART"},
+  {id:"virtual",symbol:"VIRTUAL"},
+  {id:"sei-network",symbol:"SEI"},
+  {id:"stacks",symbol:"STX"},
+  {id:"dogwifhat",symbol:"WIF"},
+  {id:"jito-governance-token",symbol:"JTO"},
+  {id:"lido-dao",symbol:"LDO"},
+  {id:"pendle",symbol:"PENDLE"},
+  {id:"eigenlayer",symbol:"EIGEN"},
+  {id:"etherfi-staked-eth",symbol:"ETHFI"},
+  {id:"dog",symbol:"DOG"},
+  {id:"popcat",symbol:"POPCAT"},
+  {id:"layerzero",symbol:"ZRO"},
+  {id:"ai-16z",symbol:"AI16Z"}
 ];
-// gerar URL de ícone — retirado de spothq/cryptocurrency-icons (MIT)
-// primário: API cryptoicon vercel; fallback: pack cryptocurrency-icons
+
+// função para obter ícone (CDN primário + fallback)
 const iconUrl=sym=>({
   primary:`https://cryptoicon-api.vercel.app/api/icon/${sym.toLowerCase()}`,
   fallback:`https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/32/color/${sym.toLowerCase()}.png`
@@ -51,20 +79,21 @@ const fmt=n=>n.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDi
 function makeItem(c,price,change){
   const cls=change>=0?'up':'down';
   const sign=change>=0?'+':'';
-    const urls=iconUrl(c.symbol);
-  const img=`<img src="${urls.primary}" alt="${c.symbol}" onerror="if(this.src!== '${urls.fallback}') { this.src='${urls.fallback}'; } else { this.style.display='none'; }">`;
+  const urls=iconUrl(c.symbol);
+  const img=`<img src="${urls.primary}" alt="${c.symbol}" onerror="if(this.src!=='${urls.fallback}')this.src='${urls.fallback}';else this.style.display='none';">`;
   return `<div class="item">${img}<span>${c.symbol}</span><span class="price">$${fmt(price)}</span><span class="${cls}">${sign}${fmt(change)}%</span></div>`;
 }
+
 // ----------- CORE ---------------
 async function build(){
   try{
-    const data=await fetch(API,{headers:{'accept':'application/json'}}).then(r=>r.json());
+    const data=await fetch(API,{headers:{accept:'application/json'}}).then(r=>r.json());
     const items=COINS.map(c=>{
       const p=data[c.id];
       if(!p) return '';
-      return makeItem(c,p.usd,p.usd_24h_change);
-    }).join('');
-    document.getElementById('track').innerHTML=items+items; // duplicate for seamless scroll
+      return makeItem(c,p.usd,p.usd_24hr_change);
+    }).filter(Boolean).join('');
+    document.getElementById('track').innerHTML=items+items; // duplicate for  seamless scroll
   }catch(e){
     console.error('CGK error',e);
     document.getElementById('cryptoBanner').innerText='⚠️ erro ao carregar preços';
