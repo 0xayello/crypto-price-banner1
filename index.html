@@ -6,7 +6,7 @@
 <title>Crypto Prices Banner</title>
 <style>
  :root{
-  --banner-h:50px;
+  --banner-h:50px;              /* antes 80px — banner mais fino */
   --scroll-duration:120s;
   --bg:#0e1117;--text:#e6e8ea;--divider:#2c313d;
  }
@@ -16,7 +16,6 @@
  @keyframes scroll{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
  #cryptoBanner:hover .track{animation-play-state:paused;}
  .item{display:flex;align-items:center;gap:6px;padding:0 14px;border-right:1px solid var(--divider);font-size:13px;font-weight:600;}
- .item img{height:18px;width:18px;object-fit:contain;}
  .price{font-variant-numeric:tabular-nums;}
  .up{color:#00d97e;} .down{color:#ff5c5c;}
 </style>
@@ -36,9 +35,7 @@ const COINS=[
   {id:"polkadot",    symbol:"DOT"},
   {id:"chainlink",   symbol:"LINK"},
   {id:"tron",        symbol:"TRX"}
-];
-// base icons from cryptocurrency-icons (MIT) sized 32px colour
-const iconUrl=sym=>`https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/32/color/${sym.toLowerCase()}.png`;
+]; // add/remove here (no stablecoins)
 
 const API=`https://api.coingecko.com/api/v3/simple/price?vs_currencies=usd&ids=${COINS.map(c=>c.id).join(',')}&include_24hr_change=true`;
 
@@ -47,7 +44,7 @@ function fmt(n){return n.toLocaleString("en-US",{minimumFractionDigits:2,maximum
 function makeItem(c,price,change){
   const cls=change>=0?'up':'down';
   const sign=change>=0?'+':'';
-  return `<div class="item"><img src="${iconUrl(c.symbol)}" alt="${c.symbol}"><span>${c.symbol}</span><span class="price">$${fmt(price)}</span><span class="${cls}">${sign}${fmt(change)}%</span></div>`;
+  return `<div class="item"><span>${c.symbol}</span><span class="price">$${fmt(price)}</span><span class="${cls}">${sign}${fmt(change)}%</span></div>`;
 }
 // ----------- CORE ---------------
 async function build(){
@@ -56,7 +53,7 @@ async function build(){
     const items=COINS.map(c=>{
       const p=data[c.id];
       if(!p) return '';
-      return makeItem(c,p.usd,p.usd_24hr_change);
+      return makeItem(c,p.usd,p.usd_24h_change);
     }).join('');
     document.getElementById('track').innerHTML=items+items; // duplicate for seamless scroll
   }catch(e){
@@ -66,7 +63,7 @@ async function build(){
 }
 
 build();
-setInterval(build,60*1000);
+setInterval(build,60*1000); // update a cada 1 min
 </script>
 </body>
 </html>
