@@ -32,7 +32,9 @@ const COINS=[
   {id:"solana",symbol:"SOL"},
   {id:"tron",symbol:"TRX"},
   {id:"dogecoin",symbol:"DOGE"},
-  {id:"hyperliquid",symbol:"HYPER"},
+  {id:"hyperliquid",symbol:"HYPE"},
+  {id:"eigenlayer",symbol:"EIGEN"},
+  {id:"fartcoin",symbol:"FART"},
   {id:"sui",symbol:"SUI"},
   {id:"chainlink",symbol:"LINK"},
   {id:"avalanche-2",symbol:"AVAX"},
@@ -50,20 +52,14 @@ const COINS=[
   {id:"arbitrum",symbol:"ARB"},
   {id:"jupiter-exchange",symbol:"JUP"},
   {id:"celestia",symbol:"TIA"},
-  {id:"fartcoin",symbol:"FART"},
-  {id:"virtual",symbol:"VIRTUAL"},
   {id:"sei-network",symbol:"SEI"},
   {id:"stacks",symbol:"STX"},
   {id:"dogwifhat",symbol:"WIF"},
   {id:"jito-governance-token",symbol:"JTO"},
   {id:"lido-dao",symbol:"LDO"},
   {id:"pendle",symbol:"PENDLE"},
-  {id:"eigenlayer",symbol:"EIGEN"},
   {id:"etherfi-staked-eth",symbol:"ETHFI"},
-  {id:"dog",symbol:"DOG"},
-  {id:"popcat",symbol:"POPCAT"},
-  {id:"layerzero",symbol:"ZRO"},
-  {id:"ai-16z",symbol:"AI16Z"}
+  {id:"layerzero",symbol:"ZRO"}
 ];
 
 // função para obter ícone (CDN primário + fallback)
@@ -72,7 +68,13 @@ const iconUrl=sym=>({
   fallback:`https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/32/color/${sym.toLowerCase()}.png`
 });
 
-const API=`https://api.coingecko.com/api/v3/simple/price?vs_currencies=usd&ids=${COINS.map(c=>c.id).join(',')}&include_24hr_change=true`;
+async function fetchChunk(ids){
+  const q=ids.join(',');
+  const url=`https://api.coingecko.com/api/v3/simple/price?vs_currencies=usd&ids=${q}&include_24hr_change=true`;
+  const res=await fetch(url);
+  if(!res.ok) throw new Error(res.status);
+  return res.json();
+}
 
 // ----------- HELPERS ------------
 const fmt=n=>n.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -87,15 +89,22 @@ function makeItem(c,price,change){
 // ----------- CORE ---------------
 async function build(){
   try{
-    const data=await fetch(API,{headers:{accept:'application/json'}}).then(r=>r.json());
+    const chunks=[];
+    for(let i=0;i<COINS.length;i+=20) chunks.push(COINS.slice(i,i+20).map(c=>c.id));
+    const data={};
+    for(const ch of chunks){
+      const j=await fetchChunk(ch);
+      Object.assign(data,j);
+    }
     const items=COINS.map(c=>{
       const p=data[c.id];
       if(!p) return '';
-      return makeItem(c,p.usd,p.usd_24hr_change);
+      return makeItem(c,p.usd,p.usd_24h_change);
     }).filter(Boolean).join('');
-    document.getElementById('track').innerHTML=items+items; // duplicate for  seamless scroll
+    if(!items) throw new Error('empty');
+    document.getElementById('track').innerHTML=items+items;
   }catch(e){
-    console.error('CGK error',e);
+    console.error('Price fetch error',e);
     document.getElementById('cryptoBanner').innerText='⚠️ erro ao carregar preços';
   }
 }
