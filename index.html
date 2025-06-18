@@ -28,13 +28,10 @@
 const COINS=[
   {id:"bitcoin",symbol:"BTC"},
   {id:"ethereum",symbol:"ETH"},
-  {id:"binancecoin",symbol:"BNB"},
   {id:"solana",symbol:"SOL"},
   {id:"tron",symbol:"TRX"},
   {id:"dogecoin",symbol:"DOGE"},
   {id:"hyperliquid",symbol:"HYPE"},
-  {id:"eigenlayer",symbol:"EIGEN"},
-  {id:"fartcoin",symbol:"FART"},
   {id:"sui",symbol:"SUI"},
   {id:"chainlink",symbol:"LINK"},
   {id:"avalanche-2",symbol:"AVAX"},
@@ -50,17 +47,19 @@ const COINS=[
   {id:"render-token",symbol:"RNDR"},
   {id:"cosmos",symbol:"ATOM"},
   {id:"arbitrum",symbol:"ARB"},
-  {id:"jupiter-exchange",symbol:"JUP"},
+  {id:"jupiter",symbol:"JUP"},
   {id:"celestia",symbol:"TIA"},
+  {id:"fartcoin",symbol:"FART"},
   {id:"sei-network",symbol:"SEI"},
   {id:"stacks",symbol:"STX"},
   {id:"dogwifhat",symbol:"WIF"},
   {id:"jito-governance-token",symbol:"JTO"},
   {id:"lido-dao",symbol:"LDO"},
   {id:"pendle",symbol:"PENDLE"},
-  {id:"etherfi-staked-eth",symbol:"ETHFI"},
-  {id:"layerzero",symbol:"ZRO"}
-];
+  {id:"eigenlayer",symbol:"EIGEN"},
+  {id:"etherfi",symbol:"ETHERFI"},
+  {id:"popcat",symbol:"POPCAT"}
+]; // LayerZero removido até listagem oficial
 
 // função para obter ícone (CDN primário + fallback)
 const iconUrl=sym=>({
