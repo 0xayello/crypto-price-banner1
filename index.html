@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Crypto‑Ticker v24</title>
+  <title>Crypto‑Ticker v25</title>
   <style>
     :root{
       --height:46px;          /* banner height                     */
@@ -36,18 +36,21 @@ const TOKENS=[
  ["aave","AAVE"],["near","NEAR"],["ondo-finance","ONDO"],["render-token","RNDR"],["cosmos","ATOM"],
  ["arbitrum","ARB"],["jupiter","JUP"],["celestia","TIA"],["fartcoin","FART"],["sei-network","SEI"],
  ["stacks","STX"],["dogwifhat","WIF"],["jito-governance-token","JTO"],["lido-dao","LDO"],["pendle","PENDLE"],
- ["eigenlayer","EIGEN"],["etherfi","ETHERFI"],["popcat","POPCAT"],["layerzero","ZRO"],["virtuals-protocol","VIRTUAL"]
+ ["eigenlayer","EIGEN"],["etherfi","ETHFI"],["popcat","POPCAT"],["layerzero","ZRO"],["virtuals-protocol","VIRTUAL"]
 ];
 
 // ------------ helpers ------------------------------------------------------
 const fmt=(v,small)=>v.toLocaleString("en-US",{minimumFractionDigits:small?3:2,maximumFractionDigits:small?4:2});
 const pctFmt=v=>v.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
+const cgIcon=(slug)=>`https://assets.coingecko.com/coins/images/${slug}/thumb.png`; // we'll attempt later via map
 const icon=(sym)=>`https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/32/color/${sym.toLowerCase()}.png`;
 const letter=(sym)=>`<span class="fallback">${sym[0]}</span>`;
+const PROXY="https://corsproxy.io/?";
+const DEMO_KEY="cg-demo-api-key"; // public demo key – replace with your own for higher quota
 
 async function fetchData(){
   const ids=TOKENS.map(t=>t[0]).join(",");
-  const url=`https://corsproxy.io/?https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd&include_24hr_change=true`;
+  const url=`${PROXY}${encodeURIComponent(`https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd&include_24hr_change=true&x_cg_demo_api_key=${DEMO_KEY}`)}`;
   const res=await fetch(url);
   if(!res.ok) throw new Error(res.status);
   return res.json();
@@ -66,7 +69,7 @@ async function build(){
       const change=d.usd_24h_change??0;
       const cls=change>=0?"up":"down";
       const sign=change>=0?"+":"";
-      const img=`<img src="${icon(sym)}" onerror="this.outerHTML='${letter(sym)}'">`;
+      const img=`<img src="${icon(sym)}" onerror="this.onerror=null;this.src='';this.outerHTML='${letter(sym)}'">`;
       parts.push(`<div class="token">${img}<b>${sym}</b> $${fmt(price,price<1)} <span class="${cls}">${sign}${pctFmt(change)}%</span></div>`);
     }
     if(!parts.length) throw new Error("empty");
@@ -78,7 +81,7 @@ async function build(){
 }
 
 build();
-setInterval(build,90000); // refresh every 90s
+setInterval(build,120000); // refresh every 2 min to stay under rate‑limit
 </script>
 </body>
 </html>
