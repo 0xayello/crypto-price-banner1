@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Crypto‑Ticker v27</title>
+  <title>Crypto‑Ticker v28</title>
   <style>
     :root{
       --height:46px;          /* banner height                     */
@@ -18,17 +18,16 @@
     #track{display:flex;align-items:center;animation:scroll var(--speed) linear infinite}
     #bar:hover #track{animation-play-state:paused}
     @keyframes scroll{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
-    .token{display:flex;align-items:center;gap:6px;padding:0 14px;border-right:1px solid var(--div);min-width:165px}
+    .token{display:flex;align-items:center;gap:6px;padding:0 14px;border-right:1px solid var(--div);min-width:180px}
     .token img{width:18px;height:18px;border-radius:50%;object-fit:contain;background:#fff;flex:none}
     .up{color:#00d57b}.down{color:#ff5d5d}
-    .fallback{display:inline-block;width:18px;height:18px;border-radius:50%;background:#3b4048;color:#fff;font-size:11px;font-weight:700;text-align:center;line-height:18px}
   </style>
 </head>
 <body>
   <div id="bar"><div id="track"></div></div>
 
 <script>
-// ------------- configurable list (symbol) ---------------------------
+// ---------------- token list --------------------------------------
 const SYMBOLS=[
   "BTC","ETH","SOL","TRX","DOGE","HYPE","SUI","LINK","AVAX","TON",
   "SHIB","XMR","DOT","UNI","PEPE","AAVE","NEAR","ONDO","RNDR","ATOM",
@@ -36,10 +35,9 @@ const SYMBOLS=[
   "EIGEN","ETHFI","POPCAT","ZRO","VIRTUAL"
 ];
 
-// ------------ helpers ------------------------------------------------------
+// -------------- helpers ------------------------------------------
 const fmt=(v,small)=>Number(v).toLocaleString("en-US",{minimumFractionDigits:small?3:2,maximumFractionDigits:small?4:2});
 const pctFmt=v=>Number(v).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
-const letter=sym=>`<span class="fallback">${sym[0]}</span>`;
 const BASE_IMG="https://www.cryptocompare.com";
 
 async function fetchData(){
@@ -55,20 +53,21 @@ async function build(){
   const track=document.getElementById("track");
   try{
     const data=await fetchData();
-    const raw=data.RAW||{};
-    const disp=data.DISPLAY||{};
+    const raw=data.RAW||{}; const disp=data.DISPLAY||{};
     const parts=[];
     for(const sym of SYMBOLS){
       const r=raw[sym]?.USD; if(!r) continue;
       const price=r.PRICE; const pct=r.CHANGEPCT24HOUR;
       const cls=pct>=0?"up":"down"; const sign=pct>=0?"+":"";
-      let imgUrl="";
+      let imgTag="";
       try{
         const imgPath=disp[sym]?.USD?.IMAGEURL;
-        if(imgPath) imgUrl=BASE_IMG+imgPath;
+        if(imgPath){
+          const imgUrl=BASE_IMG+imgPath;
+          imgTag=`<img src="${imgUrl}" onerror="this.remove()">`;
+        }
       }catch{}
-      const img=imgUrl?`<img src="${imgUrl}" onerror="this.onerror=null;this.src='';this.outerHTML='${letter(sym)}'">`:letter(sym);
-      parts.push(`<div class="token">${img}<b>${sym}</b> $${fmt(price,price<1)} <span class="${cls}">${sign}${pctFmt(pct)}%</span></div>`);
+      parts.push(`<div class="token">${imgTag}<b>${sym}</b> $${fmt(price,price<1)} <span class="${cls}">${sign}${pctFmt(pct)}%</span></div>`);
     }
     if(!parts.length) throw new Error("empty");
     track.innerHTML=parts.join("")+parts.join("");
@@ -79,7 +78,7 @@ async function build(){
 }
 
 build();
-setInterval(build,180000); // refresh every 3 min
+setInterval(build,180000);
 </script>
 </body>
 </html>
