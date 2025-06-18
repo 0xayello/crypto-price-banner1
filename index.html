@@ -24,15 +24,13 @@
 <body>
 <div id="cryptoBanner"><div class="track" id="track"></div></div>
 <script>
-// ----------- CONFIG -------------
+// ======= CONFIG =======
 const COINS=[
   {id:"bitcoin",symbol:"BTC"},
   {id:"ethereum",symbol:"ETH"},
-  {id:"binancecoin",symbol:"BNB"},
   {id:"solana",symbol:"SOL"},
   {id:"tron",symbol:"TRX"},
   {id:"dogecoin",symbol:"DOGE"},
-  {id:"dog",symbol:"DOG"},
   {id:"hyperliquid",symbol:"HYPE"},
   {id:"sui",symbol:"SUI"},
   {id:"chainlink",symbol:"LINK"},
@@ -52,7 +50,6 @@ const COINS=[
   {id:"jupiter",symbol:"JUP"},
   {id:"celestia",symbol:"TIA"},
   {id:"fartcoin",symbol:"FART"},
-  {id:"virtuals-protocol",symbol:"VIRTUAL"},
   {id:"sei-network",symbol:"SEI"},
   {id:"stacks",symbol:"STX"},
   {id:"dogwifhat",symbol:"WIF"},
@@ -63,58 +60,41 @@ const COINS=[
   {id:"etherfi",symbol:"ETHERFI"},
   {id:"popcat",symbol:"POPCAT"},
   {id:"layerzero",symbol:"ZRO"},
-  {id:"ai16z",symbol:"AI16Z"}
-]; // LayerZero removido até listagem oficial
+  {id:"virtuals-protocol",symbol:"VIRTUAL"}
+];
 
-// função para obter ícone (CDN primário + fallback)
-const iconUrl=sym=>({
-  primary:`https://cryptoicon-api.vercel.app/api/icon/${sym.toLowerCase()}`,
-  fallback:`https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/32/color/${sym.toLowerCase()}.png`
-});
-
-async function fetchChunk(ids){
-  const q=ids.join(',');
-  const url=`https://api.coingecko.com/api/v3/simple/price?vs_currencies=usd&ids=${q}&include_24hr_change=true`;
-  const res=await fetch(url);
-  if(!res.ok) throw new Error(res.status);
-  return res.json();
-}
-
-// ----------- HELPERS ------------
+// ======= STYLE HELPERS =======
 const fmt=n=>n.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
-function makeItem(c,price,change){
-  const cls=change>=0?'up':'down';
-  const sign=change>=0?'+':'';
-  const urls=iconUrl(c.symbol);
-  const img=`<img src="${urls.primary}" alt="${c.symbol}" onerror="if(this.src!=='${urls.fallback}')this.src='${urls.fallback}';else this.style.display='none';">`;
-  return `<div class="item">${img}<span>${c.symbol}</span><span class="price">$${fmt(price)}</span><span class="${cls}">${sign}${fmt(change)}%</span></div>`;
-}
+const icon=(sym)=>`https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/32/color/${sym.toLowerCase()}.png`;
 
-// ----------- CORE ---------------
-async function build(){
+// ======= CORE =======
+async function load(){
   try{
-    const chunks=[];
-    for(let i=0;i<COINS.length;i+=20) chunks.push(COINS.slice(i,i+20).map(c=>c.id));
-    const data={};
-    for(const ch of chunks){
-      const j=await fetchChunk(ch);
-      Object.assign(data,j);
-    }
+    const ids=COINS.map(c=>c.id).join(',');
+    const url=`https://api.coingecko.com/api/v3/simple/price?vs_currencies=usd&ids=${ids}&include_24hr_change=true`;
+    const res=await fetch(url);
+    if(!res.ok) throw new Error(res.status);
+    const data=await res.json();
+
     const items=COINS.map(c=>{
       const p=data[c.id];
-      if(!p) return '';
-      return makeItem(c,p.usd,p.usd_24h_change);
+      if(!p) return '';//skip missing
+      const cls=p.usd_24h_change>=0?'up':'down';
+      const sign=p.usd_24h_change>=0?'+':'';
+      return `<div class="item"><img src="${icon(c.symbol)}" onerror="this.style.display='none'"/> <b>${c.symbol}</b> $${fmt(p.usd)} <span class="${cls}">${sign}${fmt(p.usd_24h_change)}%</span></div>`;
     }).filter(Boolean).join('');
+
     if(!items) throw new Error('empty');
-    document.getElementById('track').innerHTML=items+items;
+    const track=document.getElementById('track');
+    track.innerHTML=items+items;//duplicate for loop scroll
   }catch(e){
-    console.error('Price fetch error',e);
-    document.getElementById('cryptoBanner').innerText='⚠️ erro ao carregar preços';
+    console.error(e);
+    document.getElementById('cryptoBanner').textContent='⚠️ erro ao carregar preços';
   }
 }
 
-build();
-setInterval(build,60*1000);
+load();
+setInterval(load,60000);
 </script>
 </body>
 </html>
