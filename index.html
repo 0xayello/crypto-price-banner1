@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Crypto Prices Banner</title>
+<style>
+ :root{--banner-h:80px;--scroll-duration:120s;--bg:#0e1117;--text:#e6e8ea;--divider:#2c313d;}
+ html,body{margin:0;padding:0;background:transparent;font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",Helvetica,Arial,sans-serif;}
+ #cryptoBanner{position:absolute;inset:0 auto auto 0;height:var(--banner-h);background:var(--bg);color:var(--text);overflow:hidden;white-space:nowrap;box-shadow:0 4px 12px rgba(0,0,0,.5);}
+ .track{display:flex;height:100%;align-items:center;animation:scroll var(--scroll-duration) linear infinite;will-change:transform;}
+ @keyframes scroll{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+ #cryptoBanner:hover .track{animation-play-state:paused;}
+ .item{display:flex;align-items:center;gap:6px;padding:0 18px;border-right:1px solid var(--divider);font-size:15px;font-weight:600;}
+ .price{font-variant-numeric:tabular-nums;}
+ .up{color:#00d97e;} .down{color:#ff5c5c;}
+</style>
+</head>
+<body>
+<div id="cryptoBanner"><div class="track" id="track"></div></div>
+
+<script>
+// ----------- CONFIG -------------
+const COINS=[
+  {id:"bitcoin",     symbol:"BTC"},
+  {id:"ethereum",    symbol:"ETH"},
+  {id:"solana",      symbol:"SOL"},
+  {id:"binancecoin", symbol:"BNB"},
+  {id:"dogecoin",    symbol:"DOGE"},
+  {id:"cardano",     symbol:"ADA"},
+  {id:"toncoin",     symbol:"TON"},
+  {id:"polkadot",    symbol:"DOT"},
+  {id:"chainlink",   symbol:"LINK"},
+  {id:"tron",        symbol:"TRX"}
+]; // add/remove here (no stablecoins)
+
+const API=`https://api.coingecko.com/api/v3/simple/price?vs_currencies=usd&ids=${COINS.map(c=>c.id).join(',')}&include_24hr_change=true`;
+
+// ----------- HELPERS ------------
+function fmt(n){return n.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});}
+function makeItem(c,price,change){
+  const cls=change>=0?'up':'down';
+  const sign=change>=0?'+':'';
+  return `<div class="item"><span>${c.symbol}</span><span class="price">$${fmt(price)}</span><span class="${cls}">${sign}${fmt(change)}%</span></div>`;
+}
+// ----------- CORE ---------------
+async function build(){
+  try{
+    const data=await fetch(API,{headers:{'accept':'application/json'}}).then(r=>r.json());
+    const items=COINS.map(c=>{
+      const p=data[c.id];
+      if(!p) return '';
+      return makeItem(c,p.usd,p.usd_24h_change);
+    }).join('');
+    document.getElementById('track').innerHTML=items+items; // duplicate for seamless scroll
+  }catch(e){
+    console.error('CGK error',e);
+    document.getElementById('cryptoBanner').innerText='⚠️ erro ao carregar preços';
+  }
+}
+
+build();
+setInterval(build,60*1000); // update a cada 1 min
+</script>
+</body>
+</html>
