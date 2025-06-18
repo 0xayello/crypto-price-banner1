@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Crypto‑Ticker v25</title>
+  <title>Crypto‑Ticker v27</title>
   <style>
     :root{
       --height:46px;          /* banner height                     */
@@ -28,29 +28,23 @@
   <div id="bar"><div id="track"></div></div>
 
 <script>
-// ------------- configurable list (slug , symbol) ---------------------------
-const TOKENS=[
- ["bitcoin","BTC"],["ethereum","ETH"],["solana","SOL"],["tron","TRX"],["dogecoin","DOGE"],
- ["hyperliquid","HYPE"],["sui","SUI"],["chainlink","LINK"],["avalanche-2","AVAX"],["toncoin","TON"],
- ["shiba-inu","SHIB"],["monero","XMR"],["polkadot","DOT"],["uniswap","UNI"],["pepe","PEPE"],
- ["aave","AAVE"],["near","NEAR"],["ondo-finance","ONDO"],["render-token","RNDR"],["cosmos","ATOM"],
- ["arbitrum","ARB"],["jupiter","JUP"],["celestia","TIA"],["fartcoin","FART"],["sei-network","SEI"],
- ["stacks","STX"],["dogwifhat","WIF"],["jito-governance-token","JTO"],["lido-dao","LDO"],["pendle","PENDLE"],
- ["eigenlayer","EIGEN"],["etherfi","ETHFI"],["popcat","POPCAT"],["layerzero","ZRO"],["virtuals-protocol","VIRTUAL"]
+// ------------- configurable list (symbol) ---------------------------
+const SYMBOLS=[
+  "BTC","ETH","SOL","TRX","DOGE","HYPE","SUI","LINK","AVAX","TON",
+  "SHIB","XMR","DOT","UNI","PEPE","AAVE","NEAR","ONDO","RNDR","ATOM",
+  "ARB","JUP","TIA","FART","SEI","STX","WIF","JTO","LDO","PENDLE",
+  "EIGEN","ETHFI","POPCAT","ZRO","VIRTUAL"
 ];
 
 // ------------ helpers ------------------------------------------------------
-const fmt=(v,small)=>v.toLocaleString("en-US",{minimumFractionDigits:small?3:2,maximumFractionDigits:small?4:2});
-const pctFmt=v=>v.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
-const cgIcon=(slug)=>`https://assets.coingecko.com/coins/images/${slug}/thumb.png`; // we'll attempt later via map
-const icon=(sym)=>`https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/32/color/${sym.toLowerCase()}.png`;
-const letter=(sym)=>`<span class="fallback">${sym[0]}</span>`;
-const PROXY="https://corsproxy.io/?";
-const DEMO_KEY="cg-demo-api-key"; // public demo key – replace with your own for higher quota
+const fmt=(v,small)=>Number(v).toLocaleString("en-US",{minimumFractionDigits:small?3:2,maximumFractionDigits:small?4:2});
+const pctFmt=v=>Number(v).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
+const letter=sym=>`<span class="fallback">${sym[0]}</span>`;
+const BASE_IMG="https://www.cryptocompare.com";
 
 async function fetchData(){
-  const ids=TOKENS.map(t=>t[0]).join(",");
-  const url=`${PROXY}${encodeURIComponent(`https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd&include_24hr_change=true&x_cg_demo_api_key=${DEMO_KEY}`)}`;
+  const syms=SYMBOLS.join(",");
+  const url=`https://min-api.cryptocompare.com/data/pricemultifull?fsyms=${syms}&tsyms=USD`;
   const res=await fetch(url);
   if(!res.ok) throw new Error(res.status);
   return res.json();
@@ -61,16 +55,20 @@ async function build(){
   const track=document.getElementById("track");
   try{
     const data=await fetchData();
+    const raw=data.RAW||{};
+    const disp=data.DISPLAY||{};
     const parts=[];
-    for(const [slug,sym] of TOKENS){
-      const d=data[slug];
-      if(!d) continue;
-      const price=d.usd; if(price==null) continue;
-      const change=d.usd_24h_change??0;
-      const cls=change>=0?"up":"down";
-      const sign=change>=0?"+":"";
-      const img=`<img src="${icon(sym)}" onerror="this.onerror=null;this.src='';this.outerHTML='${letter(sym)}'">`;
-      parts.push(`<div class="token">${img}<b>${sym}</b> $${fmt(price,price<1)} <span class="${cls}">${sign}${pctFmt(change)}%</span></div>`);
+    for(const sym of SYMBOLS){
+      const r=raw[sym]?.USD; if(!r) continue;
+      const price=r.PRICE; const pct=r.CHANGEPCT24HOUR;
+      const cls=pct>=0?"up":"down"; const sign=pct>=0?"+":"";
+      let imgUrl="";
+      try{
+        const imgPath=disp[sym]?.USD?.IMAGEURL;
+        if(imgPath) imgUrl=BASE_IMG+imgPath;
+      }catch{}
+      const img=imgUrl?`<img src="${imgUrl}" onerror="this.onerror=null;this.src='';this.outerHTML='${letter(sym)}'">`:letter(sym);
+      parts.push(`<div class="token">${img}<b>${sym}</b> $${fmt(price,price<1)} <span class="${cls}">${sign}${pctFmt(pct)}%</span></div>`);
     }
     if(!parts.length) throw new Error("empty");
     track.innerHTML=parts.join("")+parts.join("");
@@ -81,7 +79,7 @@ async function build(){
 }
 
 build();
-setInterval(build,120000); // refresh every 2 min to stay under rate‑limit
+setInterval(build,180000); // refresh every 3 min
 </script>
 </body>
 </html>
