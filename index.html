@@ -1,81 +1,84 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta http-equiv="X-UA-Compatible" content="IE=edge" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Crypto‑Prices Banner v23</title>
-<style>
- :root{
-  --h:50px;                   /* banner height                       */
-  --speed:150s;               /* bigger = slower scroll              */
-  --bg:#0e1117;               /* background colour                   */
-  --fg:#e8eaed;               /* text colour                         */
-  --div:#2c313d;              /* vertical dividers                   */
- }
- html,body{margin:0;background:transparent;font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif;}
- #banner{position:fixed;left:0;right:0;top:0;height:var(--h);background:var(--bg);color:var(--fg);overflow:hidden;white-space:nowrap;z-index:9999;box-shadow:0 3px 8px rgba(0,0,0,.45);font-size:14px;}
- .track{display:flex;align-items:center;height:100%;animation:scroll var(--speed) linear infinite;will-change:transform;}
- #banner:hover .track{animation-play-state:paused;}
- @keyframes scroll{0%{transform:translateX(0)}100%{transform:translateX(-50%)} }
- .item{display:flex;align-items:center;gap:6px;padding:0 14px;border-right:1px solid var(--div);min-width:160px;font-weight:600;}
- .item img{width:18px;height:18px;border-radius:50%;object-fit:contain;flex:none;background:#fff;filter:brightness(0.95);}
- .up{color:#00d97e}.down{color:#ff5c5c}
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Crypto‑Ticker v24</title>
+  <style>
+    :root{
+      --height:46px;          /* banner height                     */
+      --speed:140s;           /* scroll speed – bigger = slower    */
+      --bg:#0d1117;           /* background                        */
+      --fg:#e6e8ea;           /* foreground text                   */
+      --div:#272b33;          /* dividers                          */
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{background:transparent;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;}
+    #bar{position:fixed;left:0;right:0;top:0;height:var(--height);background:var(--bg);color:var(--fg);white-space:nowrap;overflow:hidden;z-index:9999;display:flex;align-items:center;font-size:14px;line-height:1;font-weight:600;box-shadow:0 3px 8px rgba(0,0,0,.45)}
+    #track{display:flex;align-items:center;animation:scroll var(--speed) linear infinite}
+    #bar:hover #track{animation-play-state:paused}
+    @keyframes scroll{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+    .token{display:flex;align-items:center;gap:6px;padding:0 14px;border-right:1px solid var(--div);min-width:165px}
+    .token img{width:18px;height:18px;border-radius:50%;object-fit:contain;background:#fff;flex:none}
+    .up{color:#00d57b}.down{color:#ff5d5d}
+    .fallback{display:inline-block;width:18px;height:18px;border-radius:50%;background:#3b4048;color:#fff;font-size:11px;font-weight:700;text-align:center;line-height:18px}
+  </style>
 </head>
 <body>
-<div id="banner"><div id="track" class="track"></div></div>
-<script>
-/* =============================================================
-   Crypto‑price banner v23
-   ‑ single call to CoinGecko simple/price (via corsproxy) for
-     both price & 24h change.
-   ‑ static icons from cryptocurrency‑icons repo (no CORS).
-   =============================================================*/
+  <div id="bar"><div id="track"></div></div>
 
-const LIST=[
-  ["bitcoin","BTC"], ["ethereum","ETH"], ["solana","SOL"], ["tron","TRX"], ["dogecoin","DOGE"],
-  ["hyperliquid","HYPE"], ["sui","SUI"], ["chainlink","LINK"], ["avalanche-2","AVAX"], ["toncoin","TON"],
-  ["shiba-inu","SHIB"], ["monero","XMR"], ["polkadot","DOT"], ["uniswap","UNI"], ["pepe","PEPE"],
-  ["aave","AAVE"], ["near","NEAR"], ["ondo-finance","ONDO"], ["render-token","RNDR"], ["cosmos","ATOM"],
-  ["arbitrum","ARB"], ["jupiter","JUP"], ["celestia","TIA"], ["fartcoin","FART"], ["sei-network","SEI"],
-  ["stacks","STX"], ["dogwifhat","WIF"], ["jito-governance-token","JTO"], ["lido-dao","LDO"], ["pendle","PENDLE"],
-  ["eigenlayer","EIGEN"], ["etherfi","ETHERFI"], ["popcat","POPCAT"], ["layerzero","ZRO"], ["virtuals-protocol","VIRTUAL"]
+<script>
+// ------------- configurable list (slug , symbol) ---------------------------
+const TOKENS=[
+ ["bitcoin","BTC"],["ethereum","ETH"],["solana","SOL"],["tron","TRX"],["dogecoin","DOGE"],
+ ["hyperliquid","HYPE"],["sui","SUI"],["chainlink","LINK"],["avalanche-2","AVAX"],["toncoin","TON"],
+ ["shiba-inu","SHIB"],["monero","XMR"],["polkadot","DOT"],["uniswap","UNI"],["pepe","PEPE"],
+ ["aave","AAVE"],["near","NEAR"],["ondo-finance","ONDO"],["render-token","RNDR"],["cosmos","ATOM"],
+ ["arbitrum","ARB"],["jupiter","JUP"],["celestia","TIA"],["fartcoin","FART"],["sei-network","SEI"],
+ ["stacks","STX"],["dogwifhat","WIF"],["jito-governance-token","JTO"],["lido-dao","LDO"],["pendle","PENDLE"],
+ ["eigenlayer","EIGEN"],["etherfi","ETHERFI"],["popcat","POPCAT"],["layerzero","ZRO"],["virtuals-protocol","VIRTUAL"]
 ];
 
-const fmt=(n,small)=>n.toLocaleString("en-US",{minimumFractionDigits:small?3:2,maximumFractionDigits:small?4:2});
-const letter=sym=>`<span style="display:inline-block;width:18px;height:18px;line-height:18px;font-size:11px;font-weight:700;background:#40454f;border-radius:50%;text-align:center;color:#fff;">${sym[0]}</span>`;
-const iconUrl=sym=>`https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/32/color/${sym.toLowerCase()}.png`;
+// ------------ helpers ------------------------------------------------------
+const fmt=(v,small)=>v.toLocaleString("en-US",{minimumFractionDigits:small?3:2,maximumFractionDigits:small?4:2});
+const pctFmt=v=>v.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
+const icon=(sym)=>`https://raw.githubusercontent.com/spothq/cryptocurrency-icons/master/32/color/${sym.toLowerCase()}.png`;
+const letter=(sym)=>`<span class="fallback">${sym[0]}</span>`;
 
-async function load(){
-  const banner=document.getElementById("banner");
+async function fetchData(){
+  const ids=TOKENS.map(t=>t[0]).join(",");
+  const url=`https://corsproxy.io/https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd&include_24hr_change=true`;
+  const res=await fetch(url);
+  if(!res.ok) throw new Error(res.status);
+  return res.json();
+}
+
+async function build(){
+  const bar=document.getElementById("bar");
   const track=document.getElementById("track");
   try{
-    const idsStr=LIST.map(x=>x[0]).join(",");
-    const cg="https://corsproxy.io/https://api.coingecko.com/api/v3/simple/price?ids="+idsStr+"&vs_currencies=usd&include_24hr_change=true";
-    const data=await fetch(cg).then(r=>r.json());
+    const data=await fetchData();
     const parts=[];
-    LIST.forEach(([slug,sym])=>{
+    for(const [slug,sym] of TOKENS){
       const d=data[slug];
-      if(!d) return;
-      const price=d.usd;
-      if(price==null) return;
-      const pct=d.usd_24h_change??0;
-      const cls=pct>=0?"up":"down";
-      const sign=pct>=0?"+":"";
-      const img=`<img src="${iconUrl(sym)}" onerror="this.replaceWith('${letter(sym)}')">`;
-      parts.push(`<div class="item">${img}<b>${sym}</b> $${fmt(price,price<1)} <span class="${cls}">${sign}${fmt(Math.abs(pct),true)}%</span></div>`);
-    });
+      if(!d) continue;
+      const price=d.usd; if(price==null) continue;
+      const change=d.usd_24h_change??0;
+      const cls=change>=0?"up":"down";
+      const sign=change>=0?"+":"";
+      const img=`<img src="${icon(sym)}" onerror="this.outerHTML='${letter(sym)}'">`;
+      parts.push(`<div class="token">${img}<b>${sym}</b> $${fmt(price,price<1)} <span class="${cls}">${sign}${pctFmt(change)}%</span></div>`);
+    }
     if(!parts.length) throw new Error("empty");
     track.innerHTML=parts.join("")+parts.join("");
   }catch(e){
     console.error(e);
-    banner.textContent="⚠️ erro ao carregar preços";
+    bar.textContent="⚠️ erro ao carregar preços";
   }
 }
 
-load();
-setInterval(load,60000);
+build();
+setInterval(build,90000); // refresh every 90s
 </script>
 </body>
 </html>
